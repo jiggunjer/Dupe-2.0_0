@@ -1,0 +1,100 @@
+
+chrome.commands.onCommand.addListener(function(command) {
+
+  if (command == "duplicate") {
+
+  	duplicateCurrentTab();
+
+  }
+  
+  if (command == "duplicateToWindow") {
+     
+    dupeToWindow();
+    
+  }
+
+
+});
+
+
+function duplicateCurrentTab()
+{
+	chrome.tabs.query({active: true, lastFocusedWindow: true },
+    function(tabs) {
+        chrome.tabs.duplicate(tabs[0].id)
+    });
+
+}
+
+function dupeToWindow()
+{
+	chrome.tabs.query({active: true, lastFocusedWindow: true },
+    function(tabs) {
+        chrome.tabs.duplicate(tabs[0].id, 
+            function(duptab) {chrome.windows.create({tabId: duptab.id})}
+        )        
+    });
+
+}
+
+
+function openOrFocusOptionsPage() {
+
+	var doDuplicateTab;
+
+	try
+	{
+		if( localStorage["windowOption"] )
+		{
+			doDuplicateTab = 1;
+		}
+	}catch(e){
+		doDuplicateTab = 0;
+	}
+
+	if(doDuplicateTab)
+	{
+		duplicateCurrentTab();
+	}
+	else
+	{
+
+
+		var optionsUrl = chrome.extension.getURL('options.html'); 
+		chrome.tabs.query({}, function(extensionTabs) {
+		   var found = false;
+		   for (var i=0; i < extensionTabs.length; i++) {
+		      if (optionsUrl == extensionTabs[i].url) {
+		         found = true;
+		         // console.log("tab id: " + extensionTabs[i].id);
+		         chrome.tabs.update(extensionTabs[i].id, {"selected": true});
+		      }
+		   }
+		   if (found == false) {
+		       chrome.tabs.create({url: "options.html"});
+		   }
+		});
+
+	}
+
+
+
+}
+
+
+chrome.extension.onConnect.addListener(function(port) {
+  var tab = port.sender.tab;
+  // This will get called by the content script we execute in
+  // the tab as a result of the user pressing the browser action.
+  port.onMessage.addListener(function(info) {
+    var max_length = 1024;
+    if (info.selection.length > max_length)
+      info.selection = info.selection.substring(0, max_length);
+      openOrFocusOptionsPage();
+  });
+});
+
+// Called when the user clicks on the browser action icon.
+chrome.browserAction.onClicked.addListener(function(tab) {
+   openOrFocusOptionsPage();
+});
